@@ -1,19 +1,25 @@
 // app.js - Main application logic and UI management
 
+const SUPABASE_URL = 'https://fqbyuciszppdfgnisspi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxYnl1Y2lzenBwZGZnbmlzc3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MTkxMzgsImV4cCI6MjA5NDM5NTEzOH0.Rss5A1JcepA34uXTrdKRh10RRJbTgmkWzRSiBXX0BXQ';
+
 const App = {
     game: null,
     puzzlesData: null,
     currentDifficulty: null,
     currentLevelPage: 0,
     levelsPerPage: 100,
+    supabase: null,
+    cloudPushTimer: null,
 
     // Initialize app
     async init() {
         this.game = new SudokuGame();
         await this.loadPuzzles();
+        await this.initSupabase();
         this.setupEventListeners();
         this.checkResumeGame();
-    },
+     },
 
     // Load puzzles data
     async loadPuzzles() {
@@ -40,6 +46,180 @@ const App = {
             const count = this.getLevelCount(d);
             if (count > 0) el.textContent = `${count} Levels`;
         }
+    },
+
+    async initSupabase() {
+        if (!window.supabase?.createClient) return;
+        try {
+            this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            this.supabase.auth.onAuthStateChange(() => {
+                this.refreshSyncUI();
+            });
+            await this.refreshSyncUI();
+        } catch (e) {
+            console.error('Supabase init failed:', e);
+        }
+    },
+
+    async refreshSyncUI() {
+        const statusEl = document.getElementById('sync-status');
+        const lastEl = document.getElementById('sync-last');
+        const loginBtn = document.getElementById('sync-login');
+        const logoutBtn = document.getElementById('sync-logout');
+        const pullBtn = document.getElementById('sync-pull');
+        const pushBtn = document.getElementById('sync-push');
+
+        const meta = Storage.loadCloudMeta();
+        if (lastEl) lastEl.textContent = meta?.lastSyncAt ? new Date(meta.lastSyncAt).toLocaleString() : '-';
+
+        if (!this.supabase) {
+            if (statusEl) statusEl.textContent = 'No sync';
+            if (loginBtn) loginBtn.disabled = true;
+            if (logoutBtn) logoutBtn.disabled = true;
+            if (pullBtn) pullBtn.disabled = true;
+            if (pushBtn) pushBtn.disabled = true;
+            return;
+        }
+
+        const { data } = await this.supabase.auth.getSession();
+        const user = data?.session?.user;
+
+        if (statusEl) statusEl.textContent = user ? `Signed in` : 'Signed out';
+        if (loginBtn) loginBtn.disabled = !!user;
+        if (logoutBtn) logoutBtn.disabled = !user;
+        if (pullBtn) pullBtn.disabled = !user;
+        if (pushBtn) pushBtn.disabled = !user;
+
+        // Auto pull once when signed in and never synced this session
+        if (user && !meta?.autoPulledAt) {
+            await this.pullFromCloud();
+            Storage.saveCloudMeta({ ...(meta || {}), autoPulledAt: Date.now() });
+        }
+    },
+
+    async sendMagicLink(email) {
+        if (!this.supabase) return;
+        const { error } = await this.supabase.auth.signInWithOtp({
+            email,
+            options: { emailRedirectTo: window.location.origin }
+        });
+        if (error) throw error;
+    },
+
+    getLocalSnapshot() {
+        return {
+            currentGame: Storage.loadCurrentGame(),
+            completedLevels: Storage.getCompletedLevels()
+        };
+    },
+
+    mergeCompletedLevels(a, b) {
+        const out = { ...(a || {}) };
+        for (const [key, val] of Object.entries(b || {})) {
+            const existing = out[key];
+            if (!existing) {
+                out[key] = val;
+                continue;
+            }
+
+            const existingTime = Number.isFinite(existing.time) ? existing.time : Infinity;
+            const nextTime = Number.isFinite(val.time) ? val.time : Infinity;
+            if (nextTime < existingTime) {
+                out[key] = val;
+            } else if (nextTime === existingTime) {
+                const exAt = Number.isFinite(existing.completedAt) ? existing.completedAt : 0;
+                const nxAt = Number.isFinite(val.completedAt) ? val.completedAt : 0;
+                out[key] = nxAt > exAt ? val : existing;
+            }
+        }
+        return out;
+    },
+
+    mergeCurrentGame(a, b) {
+        if (!a) return b || null;
+        if (!b) return a || null;
+        const aAt = Number.isFinite(a.savedAt) ? a.savedAt : 0;
+        const bAt = Number.isFinite(b.savedAt) ? b.savedAt : 0;
+        return bAt > aAt ? b : a;
+    },
+
+    async pullFromCloud() {
+        if (!this.supabase) return;
+        const { data: sessionData } = await this.supabase.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (!user) return;
+
+        const { data, error } = await this.supabase
+            .from('sudoku_saves')
+            .select('current_game, completed_levels, updated_at')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Cloud pull failed:', error);
+            return;
+        }
+        if (!data) return;
+
+        const local = this.getLocalSnapshot();
+        const mergedCompleted = this.mergeCompletedLevels(local.completedLevels, data.completed_levels);
+        const mergedGame = this.mergeCurrentGame(local.currentGame, data.current_game);
+
+        if (mergedGame) Storage.saveCurrentGame(mergedGame);
+        else Storage.clearCurrentGame();
+        Storage.saveCompletedLevels(mergedCompleted);
+
+        const meta = Storage.loadCloudMeta() || {};
+        Storage.saveCloudMeta({
+            ...meta,
+            lastSyncAt: Date.now(),
+            cloudUpdatedAt: data.updated_at ? Date.parse(data.updated_at) : meta.cloudUpdatedAt
+        });
+
+        // Update resume button + stats UI immediately
+        this.checkResumeGame();
+        this.renderStats();
+        await this.refreshSyncUI();
+    },
+
+    async pushToCloud() {
+        if (!this.supabase) return;
+        const { data: sessionData } = await this.supabase.auth.getSession();
+        const user = sessionData?.session?.user;
+        if (!user) return;
+
+        const snap = this.getLocalSnapshot();
+        const payload = {
+            user_id: user.id,
+            current_game: snap.currentGame,
+            completed_levels: snap.completedLevels,
+            updated_at: new Date().toISOString()
+        };
+
+        const { error } = await this.supabase
+            .from('sudoku_saves')
+            .upsert(payload, { onConflict: 'user_id' });
+
+        if (error) {
+            console.error('Cloud push failed:', error);
+            return;
+        }
+
+        const meta = Storage.loadCloudMeta() || {};
+        Storage.saveCloudMeta({
+            ...meta,
+            lastSyncAt: Date.now(),
+            cloudUpdatedAt: Date.parse(payload.updated_at)
+        });
+        await this.refreshSyncUI();
+    },
+
+    queueCloudPush() {
+        if (!this.supabase) return;
+        if (this.cloudPushTimer) clearTimeout(this.cloudPushTimer);
+        this.cloudPushTimer = setTimeout(() => {
+            this.pushToCloud();
+        }, 1200);
     },
 
     // Setup all event listeners
@@ -82,6 +262,33 @@ const App = {
 
         document.getElementById('back-from-stats')?.addEventListener('click', () => {
             this.showScreen('level-select-screen');
+        });
+
+        // Sync actions
+        document.getElementById('sync-login')?.addEventListener('click', async () => {
+            const email = document.getElementById('sync-email')?.value?.trim();
+            if (!email) return;
+            try {
+                await this.sendMagicLink(email);
+                alert('Link dihantar. Check email dan click link untuk login.');
+            } catch (e) {
+                console.error(e);
+                alert('Failed to send link. Check email / network.');
+            }
+        });
+
+        document.getElementById('sync-logout')?.addEventListener('click', async () => {
+            if (!this.supabase) return;
+            await this.supabase.auth.signOut();
+            await this.refreshSyncUI();
+        });
+
+        document.getElementById('sync-pull')?.addEventListener('click', async () => {
+            await this.pullFromCloud();
+        });
+
+        document.getElementById('sync-push')?.addEventListener('click', async () => {
+            await this.pushToCloud();
         });
 
         // Control buttons
@@ -335,16 +542,18 @@ const App = {
                 
                 const value = this.game.getCell(row, col);
                 
-                if (this.game.isFixed(row, col)) {
-                    cell.classList.add('fixed');
-                    cell.textContent = value;
-                } else if (value !== 0) {
-                    cell.textContent = value;
-                } else {
-                    // Check for notes
-                    const notes = this.game.getNotes(row, col);
-                    if (notes.length > 0) {
-                        cell.classList.add('notes-mode');
+                 if (this.game.isFixed(row, col)) {
+                     cell.classList.add('fixed');
+                     cell.textContent = value;
+                 } else if (value !== 0) {
+                     cell.classList.add('filled');
+                     cell.textContent = value;
+                 } else {
+                     cell.classList.add('empty');
+                     // Check for notes
+                     const notes = this.game.getNotes(row, col);
+                     if (notes.length > 0) {
+                         cell.classList.add('notes-mode');
                         const notesGrid = document.createElement('div');
                         notesGrid.className = 'notes-grid';
                         for (let n = 1; n <= 9; n++) {
@@ -419,21 +628,23 @@ const App = {
             this.renderBoard();
             this.updateCellHighlights();
         } else {
-            const isCorrect = this.game.setCell(row, col, number);
+            const result = this.game.setCell(row, col, number);
             this.renderBoard();
             this.updateCellHighlights();
             this.updateUI();
             
-            if (!isCorrect) {
+            if (result === 'wrong') {
                 this.showError(row, col);
+            } else if (result === 'fixed') {
+                this.showLocked(row, col);
             }
             
             this.saveGameState();
-            
-             if (this.game.isComplete()) {
-                 this.handleWin();
-             }
-         }
+             
+              if (this.game.isComplete()) {
+                  this.handleWin();
+              }
+          }
         
         this.updateNumberPad();
     },
@@ -493,6 +704,15 @@ const App = {
         }
     },
 
+    // Show locked animation (attempt to edit fixed cell)
+    showLocked(row, col) {
+        const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+        if (cell) {
+            cell.classList.add('locked');
+            setTimeout(() => cell.classList.remove('locked'), 300);
+        }
+    },
+
     // Update UI elements
     updateUI() {
         // Update level number
@@ -526,7 +746,8 @@ const App = {
 
     // Save game state
     saveGameState() {
-        Storage.saveCurrentGame(this.game.getState());
+        Storage.saveCurrentGame({ ...this.game.getState(), savedAt: Date.now() });
+        this.queueCloudPush();
     },
 
     // Save and exit game
@@ -546,6 +767,7 @@ const App = {
             this.game.mistakes
         );
         Storage.clearCurrentGame();
+        this.queueCloudPush();
         
         document.getElementById('final-time').textContent = 
             this.game.formatTime(this.game.timer);

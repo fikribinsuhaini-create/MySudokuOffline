@@ -64,7 +64,7 @@ class SudokuGame {
 
     // Set cell value
     setCell(row, col, value) {
-        if (this.isFixed(row, col)) return false;
+        if (this.isFixed(row, col)) return 'fixed';
 
         // Save history for undo
         this.history.push({
@@ -84,10 +84,10 @@ class SudokuGame {
         // Check if it's wrong
         if (value !== 0 && this.solution[row][col] !== value) {
             this.mistakes++;
-            return false;
+            return 'wrong';
         }
 
-        return true;
+        return 'ok';
     }
 
     // Toggle note

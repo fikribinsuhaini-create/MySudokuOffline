@@ -4,7 +4,8 @@ const Storage = {
     keys: {
         CURRENT_GAME: 'sudoku_current_game',
         COMPLETED_LEVELS: 'sudoku_completed_levels',
-        SETTINGS: 'sudoku_settings'
+        SETTINGS: 'sudoku_settings',
+        CLOUD_META: 'sudoku_cloud_meta'
     },
 
     // Save current game state
@@ -69,6 +70,17 @@ const Storage = {
         }
     },
 
+    // Replace all completed levels (used for cloud sync/restore)
+    saveCompletedLevels(completedMap) {
+        try {
+            localStorage.setItem(this.keys.COMPLETED_LEVELS, JSON.stringify(completedMap || {}));
+            return true;
+        } catch (e) {
+            console.error('Failed to save completed levels:', e);
+            return false;
+        }
+    },
+
     // Check if level is completed
     isLevelCompleted(difficulty, levelNumber) {
         const completed = this.getCompletedLevels();
@@ -97,6 +109,28 @@ const Storage = {
         } catch (e) {
             console.error('Failed to load settings:', e);
             return { soundEnabled: true, highlightEnabled: true };
+        }
+    }
+    ,
+
+    // Cloud meta (last sync time, updatedAt)
+    saveCloudMeta(meta) {
+        try {
+            localStorage.setItem(this.keys.CLOUD_META, JSON.stringify(meta));
+            return true;
+        } catch (e) {
+            console.error('Failed to save cloud meta:', e);
+            return false;
+        }
+    },
+
+    loadCloudMeta() {
+        try {
+            const data = localStorage.getItem(this.keys.CLOUD_META);
+            return data ? JSON.parse(data) : null;
+        } catch (e) {
+            console.error('Failed to load cloud meta:', e);
+            return null;
         }
     }
 };

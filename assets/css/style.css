@@ -483,6 +483,60 @@ button {
     gap: 12px;
 }
 
+.stats-row.sync-row {
+    justify-content: flex-start;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.sync-email {
+    flex: 1;
+    min-width: 220px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(10, 14, 39, 0.35);
+    border: 1px solid rgba(45, 52, 84, 0.9);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.sync-email::placeholder {
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.sync-btn {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent-primary), #6d28d9);
+    color: white;
+    font-weight: 900;
+    letter-spacing: 0.2px;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
+}
+
+.sync-btn.secondary {
+    background: rgba(30, 36, 66, 0.78);
+    border: 1px solid rgba(124, 58, 237, 0.22);
+}
+
+.sync-btn.danger {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fecaca;
+}
+
+.sync-btn:active {
+    transform: scale(0.97);
+}
+
+.sync-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .stats-row .label {
     color: var(--text-secondary);
     font-size: 0.92rem;
@@ -603,6 +657,17 @@ button {
     user-select: none;
 }
 
+.cell.empty {
+    background: rgba(21, 25, 53, 0.45);
+    border-color: rgba(45, 52, 84, 0.75);
+}
+
+.cell.filled {
+    background: rgba(30, 36, 66, 0.78);
+    border-color: rgba(124, 58, 237, 0.25);
+    color: #ffffff;
+}
+
 .cell.fixed {
     background: var(--cell-fixed);
     color: var(--text-primary);
@@ -627,6 +692,12 @@ button {
 .cell.error {
     background: var(--cell-error);
     animation: shake 0.3s ease;
+}
+
+.cell.locked {
+    background: rgba(124, 58, 237, 0.12);
+    animation: shake 0.3s ease;
+    box-shadow: inset 0 0 0 2px rgba(124, 58, 237, 0.35);
 }
 
 @keyframes shake {
