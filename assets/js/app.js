@@ -14,12 +14,17 @@ const App = {
 
     // Initialize app
     async init() {
-        this.game = new SudokuGame();
-        await this.loadPuzzles();
-        await this.initSupabase();
-        this.setupEventListeners();
-        this.checkResumeGame();
-     },
+        try {
+            this.game = new SudokuGame();
+            await this.loadPuzzles();
+            await this.initSupabase();
+            this.setupEventListeners();
+            this.checkResumeGame();
+        } catch (e) {
+            console.error('App init failed:', e);
+            this.showFatalError(e);
+        }
+    },
 
     // Load puzzles data
     async loadPuzzles() {
@@ -49,7 +54,12 @@ const App = {
     },
 
     async initSupabase() {
-        if (!window.supabase?.createClient) return;
+        const ok = await this.waitForSupabase(8000);
+        if (!ok) {
+            console.warn('Supabase not available (CDN not loaded). Sync disabled.');
+            await this.refreshSyncUI();
+            return;
+        }
         try {
             this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             this.supabase.auth.onAuthStateChange(async (event, session) => {
@@ -70,7 +80,52 @@ const App = {
             await this.refreshSyncUI();
         } catch (e) {
             console.error('Supabase init failed:', e);
+            this.showNonFatalError(`Supabase init failed: ${e?.message || String(e)}`);
         }
+    },
+
+    async waitForSupabase(timeoutMs = 8000) {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+            if (window.supabase?.createClient) return true;
+            await new Promise(r => setTimeout(r, 150));
+        }
+        return false;
+    },
+
+    showNonFatalError(message) {
+        try {
+            const meta = Storage.loadCloudMeta() || {};
+            Storage.saveCloudMeta({ ...meta, lastError: message });
+        } catch (_) {
+            // ignore
+        }
+        const errEl = document.getElementById('sync-error');
+        if (errEl) errEl.textContent = message;
+    },
+
+    showFatalError(error) {
+        const message = error?.message || String(error);
+        this.showNonFatalError(message);
+        let banner = document.getElementById('fatal-error');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'fatal-error';
+            banner.style.position = 'fixed';
+            banner.style.left = '12px';
+            banner.style.right = '12px';
+            banner.style.bottom = '12px';
+            banner.style.zIndex = '2000';
+            banner.style.padding = '10px 12px';
+            banner.style.borderRadius = '12px';
+            banner.style.background = 'rgba(239, 68, 68, 0.18)';
+            banner.style.border = '1px solid rgba(239, 68, 68, 0.45)';
+            banner.style.color = '#fecaca';
+            banner.style.fontWeight = '800';
+            banner.style.backdropFilter = 'blur(10px)';
+            document.body.appendChild(banner);
+        }
+        banner.textContent = `App error: ${message}`;
     },
 
     async refreshSyncUI() {
@@ -851,5 +906,11 @@ const App = {
 
 // Start app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('error', (event) => {
+        try { App.showFatalError(event?.error || event?.message || event); } catch (_) {}
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+        try { App.showFatalError(event?.reason || event); } catch (_) {}
+    });
     App.init();
 });
