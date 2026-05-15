@@ -605,6 +605,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }).catch(() => {});
     }
 
+    App.init();
+    return;
     // Debug helper: show last click target (helps diagnose "can't click" on some browsers).
     try {
         const el = document.createElement('div');
