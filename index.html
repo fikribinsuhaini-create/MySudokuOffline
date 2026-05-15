@@ -95,34 +95,6 @@
 
         <div class="stats-grid" id="stats-grid"></div>
 
-        <div class="stats-grid">
-            <div class="stats-card" id="sync-card">
-                <div class="stats-card-title">
-                    <h3>Sync</h3>
-                    <span class="stats-small" id="sync-status">Offline</span>
-                </div>
-                <div class="stats-rows">
-                    <div class="stats-row sync-row">
-                        <input id="sync-email" class="sync-email" type="email" inputmode="email" autocomplete="email" placeholder="Email" />
-                        <input id="sync-password" class="sync-email" type="password" autocomplete="current-password" placeholder="Password" />
-                        <button id="sync-signin" class="sync-btn" type="button">Sign in</button>
-                        <button id="sync-signup" class="sync-btn secondary" type="button">Sign up</button>
-                    </div>
-                    <div class="stats-row sync-row">
-                        <button id="sync-logout" class="sync-btn danger" type="button">Logout</button>
-                    </div>
-                    <div class="stats-row">
-                        <span class="label">Last sync</span>
-                        <span class="value" id="sync-last">-</span>
-                    </div>
-                    <div class="stats-row">
-                        <span class="label">Last error</span>
-                        <span class="value" id="sync-error">-</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="stats-footer">
             <p class="stats-note">Data simpan dalam device (localStorage).</p>
         </div>
@@ -205,7 +177,6 @@
     </div>
     
     <!-- Scripts -->
-    <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script defer src="/assets/js/storage.js"></script>
     <script defer src="/assets/js/sudoku.js"></script>
     <script defer src="/assets/js/app.js"></script>

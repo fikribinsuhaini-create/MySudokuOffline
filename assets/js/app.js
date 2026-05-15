@@ -1,29 +1,18 @@
 // app.js - Main application logic and UI management
 
-const SUPABASE_URL = 'https://fqbyuciszppdfgnisspi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxYnl1Y2lzenBwZGZnbmlzc3BpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MTkxMzgsImV4cCI6MjA5NDM5NTEzOH0.Rss5A1JcepA34uXTrdKRh10RRJbTgmkWzRSiBXX0BXQ';
-
 const App = {
     game: null,
     puzzlesData: null,
     currentDifficulty: null,
     currentLevelPage: 0,
     levelsPerPage: 100,
-    supabase: null,
-    cloudPushTimer: null,
 
     // Initialize app
     async init() {
-        try {
-            this.game = new SudokuGame();
-            await this.loadPuzzles();
-            await this.initSupabase();
-            this.setupEventListeners();
-            this.checkResumeGame();
-        } catch (e) {
-            console.error('App init failed:', e);
-            this.showFatalError(e);
-        }
+        this.game = new SudokuGame();
+        await this.loadPuzzles();
+        this.setupEventListeners();
+        this.checkResumeGame();
     },
 
 
@@ -54,266 +43,11 @@ const App = {
         }
     },
 
-    async initSupabase() {
-        const ok = await this.waitForSupabase(8000);
-        if (!ok) {
-            console.warn('Supabase not available (CDN not loaded). Sync disabled.');
-            await this.refreshSyncUI();
-            return;
-        }
-        try {
-            this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            this.supabase.auth.onAuthStateChange(async (event, session) => {
-                if (event === 'SIGNED_OUT') {
-                    const meta = Storage.loadCloudMeta() || {};
-                    Storage.saveCloudMeta({ ...meta, autoPulledAt: null, lastPulledAt: null, lastError: null, userId: null });
-                }
-
-                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                    const userId = session?.user?.id;
-                    const meta = Storage.loadCloudMeta() || {};
-                    Storage.saveCloudMeta({ ...meta, userId });
-                    await this.pullFromCloud();
-                }
-
-                await this.refreshSyncUI();
-            });
-            await this.refreshSyncUI();
-        } catch (e) {
-            console.error('Supabase init failed:', e);
-            this.showNonFatalError(`Supabase init failed: ${e?.message || String(e)}`);
-        }
-    },
-
-    async waitForSupabase(timeoutMs = 8000) {
-        const start = Date.now();
-        while (Date.now() - start < timeoutMs) {
-            if (window.supabase?.createClient) return true;
-            await new Promise(r => setTimeout(r, 150));
-        }
-        return false;
-    },
-
-    showNonFatalError(message) {
-        try {
-            const meta = Storage.loadCloudMeta() || {};
-            Storage.saveCloudMeta({ ...meta, lastError: message });
-        } catch (_) {
-            // ignore
-        }
-        const errEl = document.getElementById('sync-error');
-        if (errEl) errEl.textContent = message;
-    },
-
-    showFatalError(error) {
-        const message = error?.message || String(error);
-        this.showNonFatalError(message);
-        let banner = document.getElementById('fatal-error');
-        if (!banner) {
-            banner = document.createElement('div');
-            banner.id = 'fatal-error';
-            banner.style.position = 'fixed';
-            banner.style.left = '12px';
-            banner.style.right = '12px';
-            banner.style.bottom = '12px';
-            banner.style.zIndex = '2000';
-            banner.style.padding = '10px 12px';
-            banner.style.borderRadius = '12px';
-            banner.style.background = 'rgba(239, 68, 68, 0.18)';
-            banner.style.border = '1px solid rgba(239, 68, 68, 0.45)';
-            banner.style.color = '#fecaca';
-            banner.style.fontWeight = '800';
-            banner.style.backdropFilter = 'blur(10px)';
-            document.body.appendChild(banner);
-        }
-        banner.textContent = `App error: ${message}`;
-    },
-
-    async refreshSyncUI() {
-        const statusEl = document.getElementById('sync-status');
-        const lastEl = document.getElementById('sync-last');
-        const errEl = document.getElementById('sync-error');
-        const signInBtn = document.getElementById('sync-signin');
-        const signUpBtn = document.getElementById('sync-signup');
-        const logoutBtn = document.getElementById('sync-logout');
-        let meta = Storage.loadCloudMeta();
-
-        if (lastEl) lastEl.textContent = meta?.lastSyncAt ? new Date(meta.lastSyncAt).toLocaleString() : '-';
-        if (errEl) errEl.textContent = meta?.lastError ? meta.lastError : '-';
-
-        if (!this.supabase) {
-            if (statusEl) statusEl.textContent = 'No sync';
-            if (signInBtn) signInBtn.disabled = true;
-            if (signUpBtn) signUpBtn.disabled = true;
-            if (logoutBtn) logoutBtn.disabled = true;
-            return;
-        }
-
-        const { data } = await this.supabase.auth.getSession();
-        const user = data?.session?.user;
-
-        if (statusEl) statusEl.textContent = user ? `Signed in` : 'Signed out';
-        if (signInBtn) signInBtn.disabled = !!user;
-        if (signUpBtn) signUpBtn.disabled = !!user;
-        if (logoutBtn) logoutBtn.disabled = !user;
-
-        // Auto pull periodically while signed in (multi-device)
-        if (user) {
-            const now = Date.now();
-            const userId = user.id;
-            meta = meta || {};
-
-            if (meta.userId && meta.userId !== userId) {
-                meta = { ...meta, autoPulledAt: null, lastPulledAt: null, lastError: null };
-            }
-
-            const lastPulledAt = Number.isFinite(meta.lastPulledAt) ? meta.lastPulledAt : 0;
-            const shouldPull = !lastPulledAt || (now - lastPulledAt) > 30_000;
-            if (shouldPull) {
-                await this.pullFromCloud();
-                Storage.saveCloudMeta({ ...meta, userId, lastPulledAt: now });
-            }
-        }
-    },
-
     getLocalSnapshot() {
         return {
             currentGame: Storage.loadCurrentGame(),
             completedLevels: Storage.getCompletedLevels()
         };
-    },
-
-    mergeCompletedLevels(a, b) {
-        const out = { ...(a || {}) };
-        for (const [key, val] of Object.entries(b || {})) {
-            const existing = out[key];
-            if (!existing) {
-                out[key] = val;
-                continue;
-            }
-
-            const existingTime = Number.isFinite(existing.time) ? existing.time : Infinity;
-            const nextTime = Number.isFinite(val.time) ? val.time : Infinity;
-            if (nextTime < existingTime) {
-                out[key] = val;
-            } else if (nextTime === existingTime) {
-                const exAt = Number.isFinite(existing.completedAt) ? existing.completedAt : 0;
-                const nxAt = Number.isFinite(val.completedAt) ? val.completedAt : 0;
-                out[key] = nxAt > exAt ? val : existing;
-            }
-        }
-        return out;
-    },
-
-    mergeCurrentGame(a, b) {
-        if (!a) return b || null;
-        if (!b) return a || null;
-        const aAt = Number.isFinite(a.savedAt) ? a.savedAt : 0;
-        const bAt = Number.isFinite(b.savedAt) ? b.savedAt : 0;
-        return bAt > aAt ? b : a;
-    },
-
-    async pullFromCloud() {
-        if (!this.supabase) return;
-        const { data: sessionData } = await this.supabase.auth.getSession();
-        const user = sessionData?.session?.user;
-        if (!user) return;
-
-        const { data, error } = await this.supabase
-            .from('sudoku_saves')
-            .select('current_game, completed_levels, updated_at')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-        if (error) {
-            console.error('Cloud pull failed:', error);
-            const meta = Storage.loadCloudMeta() || {};
-            Storage.saveCloudMeta({ ...meta, lastError: error.message || String(error) });
-            return;
-        }
-        if (!data) return;
-
-        const local = this.getLocalSnapshot();
-        const mergedCompleted = this.mergeCompletedLevels(local.completedLevels, data.completed_levels);
-        const mergedGame = this.mergeCurrentGame(local.currentGame, data.current_game);
-
-        if (mergedGame) Storage.saveCurrentGame(mergedGame);
-        else Storage.clearCurrentGame();
-        Storage.saveCompletedLevels(mergedCompleted);
-
-        const meta = Storage.loadCloudMeta() || {};
-        Storage.saveCloudMeta({
-            ...meta,
-            lastSyncAt: Date.now(),
-            cloudUpdatedAt: data.updated_at ? Date.parse(data.updated_at) : meta.cloudUpdatedAt
-        });
-
-        // Update resume button + stats UI immediately
-        this.checkResumeGame();
-        this.renderStats();
-        await this.refreshSyncUI();
-    },
-
-    async pushToCloud() {
-        if (!this.supabase) return;
-        const { data: sessionData } = await this.supabase.auth.getSession();
-        const user = sessionData?.session?.user;
-        if (!user) return;
-
-        // Merge with existing cloud state to avoid clobbering progress from other devices.
-        let cloudRow = null;
-        try {
-            const { data, error } = await this.supabase
-                .from('sudoku_saves')
-                .select('current_game, completed_levels')
-                .eq('user_id', user.id)
-                .maybeSingle();
-            if (error) throw error;
-            cloudRow = data;
-        } catch (e) {
-            console.error('Cloud prefetch failed:', e);
-            const meta = Storage.loadCloudMeta() || {};
-            Storage.saveCloudMeta({ ...meta, lastError: e?.message || String(e) });
-            return;
-        }
-
-        const snap = this.getLocalSnapshot();
-        const mergedCompleted = this.mergeCompletedLevels(cloudRow?.completed_levels, snap.completedLevels);
-        const mergedGame = this.mergeCurrentGame(cloudRow?.current_game, snap.currentGame);
-
-        const payload = {
-            user_id: user.id,
-            current_game: mergedGame,
-            completed_levels: mergedCompleted,
-            updated_at: new Date().toISOString()
-        };
-
-        const { error } = await this.supabase
-            .from('sudoku_saves')
-            .upsert(payload, { onConflict: 'user_id' });
-
-        if (error) {
-            console.error('Cloud push failed:', error);
-            const meta = Storage.loadCloudMeta() || {};
-            Storage.saveCloudMeta({ ...meta, lastError: error.message || String(error) });
-            return;
-        }
-
-        const meta = Storage.loadCloudMeta() || {};
-        Storage.saveCloudMeta({
-            ...meta,
-            lastSyncAt: Date.now(),
-            cloudUpdatedAt: Date.parse(payload.updated_at)
-        });
-        await this.refreshSyncUI();
-    },
-
-    queueCloudPush() {
-        if (!this.supabase) return;
-        if (this.cloudPushTimer) clearTimeout(this.cloudPushTimer);
-        this.cloudPushTimer = setTimeout(() => {
-            this.pushToCloud();
-        }, 1200);
     },
 
     // Setup all event listeners
@@ -357,49 +91,6 @@ const App = {
         document.getElementById('back-from-stats')?.addEventListener('click', () => {
             this.showScreen('level-select-screen');
         });
-
-        // Sync actions (email + password)
-        document.getElementById('sync-signin')?.addEventListener('click', async () => {
-            if (!this.supabase) return;
-            const email = document.getElementById('sync-email')?.value?.trim();
-            const password = document.getElementById('sync-password')?.value;
-            if (!email || !password) return;
-            try {
-                const { error } = await this.supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-                await this.refreshSyncUI();
-                await this.pullFromCloud();
-            } catch (e) {
-                console.error(e);
-                const msg = e?.message || e?.error_description || String(e);
-                alert(`Sign in failed: ${msg}`);
-            }
-        });
-
-        document.getElementById('sync-signup')?.addEventListener('click', async () => {
-            if (!this.supabase) return;
-            const email = document.getElementById('sync-email')?.value?.trim();
-            const password = document.getElementById('sync-password')?.value;
-            if (!email || !password) return;
-            try {
-                const { error } = await this.supabase.auth.signUp({ email, password });
-                if (error) throw error;
-                await this.refreshSyncUI();
-                await this.pullFromCloud();
-            } catch (e) {
-                console.error(e);
-                const msg = e?.message || e?.error_description || String(e);
-                alert(`Sign up failed: ${msg}`);
-            }
-        });
-
-        document.getElementById('sync-logout')?.addEventListener('click', async () => {
-            if (!this.supabase) return;
-            await this.supabase.auth.signOut();
-            await this.refreshSyncUI();
-        });
-
-        // Pull/push handled automatically (pull on login, push on progress)
 
         // Control buttons
         document.getElementById('notes-btn')?.addEventListener('click', () => {
@@ -856,8 +547,7 @@ const App = {
 
     // Save game state
     saveGameState() {
-        Storage.saveCurrentGame({ ...this.game.getState(), savedAt: Date.now() });
-        this.queueCloudPush();
+        Storage.saveCurrentGame(this.game.getState());
     },
 
     // Save and exit game
@@ -877,7 +567,6 @@ const App = {
             this.game.mistakes
         );
         Storage.clearCurrentGame();
-        this.queueCloudPush();
         
         document.getElementById('final-time').textContent = 
             this.game.formatTime(this.game.timer);
