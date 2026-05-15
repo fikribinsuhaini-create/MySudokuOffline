@@ -101,7 +101,7 @@ const App = {
         if (!this.supabase) return;
         const { error } = await this.supabase.auth.signInWithOtp({
             email,
-            options: { emailRedirectTo: window.location.origin }
+            options: { emailRedirectTo: `${window.location.origin}/` }
         });
         if (error) throw error;
     },
@@ -273,7 +273,8 @@ const App = {
                 alert('Link dihantar. Check email dan click link untuk login.');
             } catch (e) {
                 console.error(e);
-                alert('Failed to send link. Check email / network.');
+                const msg = e?.message || e?.error_description || String(e);
+                alert(`Failed to send link: ${msg}`);
             }
         });
 
