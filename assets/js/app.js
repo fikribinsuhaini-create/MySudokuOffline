@@ -92,8 +92,6 @@ const App = {
         // Auto pull once when signed in and never synced this session
         if (user && !meta?.autoPulledAt) {
             await this.pullFromCloud();
-            // If cloud empty, push local up so other devices can pull.
-            await this.pushToCloud();
             Storage.saveCloudMeta({ ...(meta || {}), autoPulledAt: Date.now() });
         }
     },
@@ -182,11 +180,31 @@ const App = {
         const user = sessionData?.session?.user;
         if (!user) return;
 
+        // Merge with existing cloud state to avoid clobbering progress from other devices.
+        let cloudRow = null;
+        try {
+            const { data, error } = await this.supabase
+                .from('sudoku_saves')
+                .select('current_game, completed_levels')
+                .eq('user_id', user.id)
+                .maybeSingle();
+            if (error) throw error;
+            cloudRow = data;
+        } catch (e) {
+            console.error('Cloud prefetch failed:', e);
+            const meta = Storage.loadCloudMeta() || {};
+            Storage.saveCloudMeta({ ...meta, lastError: e?.message || String(e) });
+            return;
+        }
+
         const snap = this.getLocalSnapshot();
+        const mergedCompleted = this.mergeCompletedLevels(cloudRow?.completed_levels, snap.completedLevels);
+        const mergedGame = this.mergeCurrentGame(cloudRow?.current_game, snap.currentGame);
+
         const payload = {
             user_id: user.id,
-            current_game: snap.currentGame,
-            completed_levels: snap.completedLevels,
+            current_game: mergedGame,
+            completed_levels: mergedCompleted,
             updated_at: new Date().toISOString()
         };
 
