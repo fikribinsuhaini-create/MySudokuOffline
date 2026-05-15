@@ -52,8 +52,20 @@ const App = {
         if (!window.supabase?.createClient) return;
         try {
             this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            this.supabase.auth.onAuthStateChange(() => {
-                this.refreshSyncUI();
+            this.supabase.auth.onAuthStateChange(async (event, session) => {
+                if (event === 'SIGNED_OUT') {
+                    const meta = Storage.loadCloudMeta() || {};
+                    Storage.saveCloudMeta({ ...meta, autoPulledAt: null, lastPulledAt: null, lastError: null, userId: null });
+                }
+
+                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                    const userId = session?.user?.id;
+                    const meta = Storage.loadCloudMeta() || {};
+                    Storage.saveCloudMeta({ ...meta, userId });
+                    await this.pullFromCloud();
+                }
+
+                await this.refreshSyncUI();
             });
             await this.refreshSyncUI();
         } catch (e) {
@@ -68,7 +80,7 @@ const App = {
         const signInBtn = document.getElementById('sync-signin');
         const signUpBtn = document.getElementById('sync-signup');
         const logoutBtn = document.getElementById('sync-logout');
-        const meta = Storage.loadCloudMeta();
+        let meta = Storage.loadCloudMeta();
 
         if (lastEl) lastEl.textContent = meta?.lastSyncAt ? new Date(meta.lastSyncAt).toLocaleString() : '-';
         if (errEl) errEl.textContent = meta?.lastError ? meta.lastError : '-';
@@ -89,10 +101,22 @@ const App = {
         if (signUpBtn) signUpBtn.disabled = !!user;
         if (logoutBtn) logoutBtn.disabled = !user;
 
-        // Auto pull once when signed in and never synced this session
-        if (user && !meta?.autoPulledAt) {
-            await this.pullFromCloud();
-            Storage.saveCloudMeta({ ...(meta || {}), autoPulledAt: Date.now() });
+        // Auto pull periodically while signed in (multi-device)
+        if (user) {
+            const now = Date.now();
+            const userId = user.id;
+            meta = meta || {};
+
+            if (meta.userId && meta.userId !== userId) {
+                meta = { ...meta, autoPulledAt: null, lastPulledAt: null, lastError: null };
+            }
+
+            const lastPulledAt = Number.isFinite(meta.lastPulledAt) ? meta.lastPulledAt : 0;
+            const shouldPull = !lastPulledAt || (now - lastPulledAt) > 30_000;
+            if (shouldPull) {
+                await this.pullFromCloud();
+                Storage.saveCloudMeta({ ...meta, userId, lastPulledAt: now });
+            }
         }
     },
 
