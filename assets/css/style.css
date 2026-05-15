@@ -75,6 +75,36 @@ html:not([data-app-boot]) body::before {
     backdrop-filter: blur(10px);
 }
 
+#click-debug {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 2500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(21, 25, 53, 0.65);
+    border: 1px solid rgba(45, 52, 84, 0.9);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 800;
+    backdrop-filter: blur(10px);
+    max-width: calc(100vw - 20px);
+}
+
+#click-debug-hide {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: rgba(239, 68, 68, 0.18);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fecaca;
+    font-weight: 900;
+    line-height: 1;
+}
+
 button {
     font-family: inherit;
     border: none;

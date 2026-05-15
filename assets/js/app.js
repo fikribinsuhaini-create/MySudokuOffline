@@ -26,6 +26,7 @@ const App = {
         }
     },
 
+
     // Load puzzles data
     async loadPuzzles() {
         try {
@@ -914,6 +915,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }).catch(() => {});
     }
+
+    // Debug helper: show last click target (helps diagnose "can't click" on some browsers).
+    try {
+        const el = document.createElement('div');
+        el.id = 'click-debug';
+        el.innerHTML = '<button type="button" id="click-debug-hide">×</button><span id="click-debug-text">click: -</span>';
+        document.body.appendChild(el);
+        document.getElementById('click-debug-hide')?.addEventListener('click', () => el.remove());
+        document.addEventListener('click', (e) => {
+            const t = e.target;
+            if (!(t instanceof Element)) return;
+            const id = t.id ? `#${t.id}` : '';
+            const cls = t.classList?.length ? `.${Array.from(t.classList).slice(0, 3).join('.')}` : '';
+            const text = `${t.tagName.toLowerCase()}${id}${cls}`;
+            const out = document.getElementById('click-debug-text');
+            if (out) out.textContent = `click: ${text}`;
+        }, { capture: true });
+    } catch (_) {}
 
     window.addEventListener('error', (event) => {
         try { App.showFatalError(event?.error || event?.message || event); } catch (_) {}
