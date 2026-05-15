@@ -64,20 +64,18 @@ const App = {
     async refreshSyncUI() {
         const statusEl = document.getElementById('sync-status');
         const lastEl = document.getElementById('sync-last');
-        const loginBtn = document.getElementById('sync-login');
+        const signInBtn = document.getElementById('sync-signin');
+        const signUpBtn = document.getElementById('sync-signup');
         const logoutBtn = document.getElementById('sync-logout');
-        const pullBtn = document.getElementById('sync-pull');
-        const pushBtn = document.getElementById('sync-push');
 
         const meta = Storage.loadCloudMeta();
         if (lastEl) lastEl.textContent = meta?.lastSyncAt ? new Date(meta.lastSyncAt).toLocaleString() : '-';
 
         if (!this.supabase) {
             if (statusEl) statusEl.textContent = 'No sync';
-            if (loginBtn) loginBtn.disabled = true;
+            if (signInBtn) signInBtn.disabled = true;
+            if (signUpBtn) signUpBtn.disabled = true;
             if (logoutBtn) logoutBtn.disabled = true;
-            if (pullBtn) pullBtn.disabled = true;
-            if (pushBtn) pushBtn.disabled = true;
             return;
         }
 
@@ -85,25 +83,15 @@ const App = {
         const user = data?.session?.user;
 
         if (statusEl) statusEl.textContent = user ? `Signed in` : 'Signed out';
-        if (loginBtn) loginBtn.disabled = !!user;
+        if (signInBtn) signInBtn.disabled = !!user;
+        if (signUpBtn) signUpBtn.disabled = !!user;
         if (logoutBtn) logoutBtn.disabled = !user;
-        if (pullBtn) pullBtn.disabled = !user;
-        if (pushBtn) pushBtn.disabled = !user;
 
         // Auto pull once when signed in and never synced this session
         if (user && !meta?.autoPulledAt) {
             await this.pullFromCloud();
             Storage.saveCloudMeta({ ...(meta || {}), autoPulledAt: Date.now() });
         }
-    },
-
-    async sendMagicLink(email) {
-        if (!this.supabase) return;
-        const { error } = await this.supabase.auth.signInWithOtp({
-            email,
-            options: { emailRedirectTo: `${window.location.origin}/` }
-        });
-        if (error) throw error;
     },
 
     getLocalSnapshot() {
@@ -264,17 +252,38 @@ const App = {
             this.showScreen('level-select-screen');
         });
 
-        // Sync actions
-        document.getElementById('sync-login')?.addEventListener('click', async () => {
+        // Sync actions (email + password)
+        document.getElementById('sync-signin')?.addEventListener('click', async () => {
+            if (!this.supabase) return;
             const email = document.getElementById('sync-email')?.value?.trim();
-            if (!email) return;
+            const password = document.getElementById('sync-password')?.value;
+            if (!email || !password) return;
             try {
-                await this.sendMagicLink(email);
-                alert('Link dihantar. Check email dan click link untuk login.');
+                const { error } = await this.supabase.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                await this.refreshSyncUI();
+                await this.pullFromCloud();
             } catch (e) {
                 console.error(e);
                 const msg = e?.message || e?.error_description || String(e);
-                alert(`Failed to send link: ${msg}`);
+                alert(`Sign in failed: ${msg}`);
+            }
+        });
+
+        document.getElementById('sync-signup')?.addEventListener('click', async () => {
+            if (!this.supabase) return;
+            const email = document.getElementById('sync-email')?.value?.trim();
+            const password = document.getElementById('sync-password')?.value;
+            if (!email || !password) return;
+            try {
+                const { error } = await this.supabase.auth.signUp({ email, password });
+                if (error) throw error;
+                await this.refreshSyncUI();
+                await this.pullFromCloud();
+            } catch (e) {
+                console.error(e);
+                const msg = e?.message || e?.error_description || String(e);
+                alert(`Sign up failed: ${msg}`);
             }
         });
 
@@ -284,13 +293,7 @@ const App = {
             await this.refreshSyncUI();
         });
 
-        document.getElementById('sync-pull')?.addEventListener('click', async () => {
-            await this.pullFromCloud();
-        });
-
-        document.getElementById('sync-push')?.addEventListener('click', async () => {
-            await this.pushToCloud();
-        });
+        // Pull/push handled automatically (pull on login, push on progress)
 
         // Control buttons
         document.getElementById('notes-btn')?.addEventListener('click', () => {

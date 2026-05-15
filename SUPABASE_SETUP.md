@@ -1,4 +1,4 @@
-# Supabase Setup (Magic Link Sync)
+# Supabase Setup (Email + Password Sync)
 
 This project can sync progress (`resume` + completed levels) across devices using Supabase Auth + Postgres.
 
@@ -10,7 +10,11 @@ In Supabase Dashboard:
   - Site URL: `https://my-sudoku-offline.vercel.app`
   - Redirect URLs: `https://my-sudoku-offline.vercel.app/*`
 
-Enable Email provider (magic link).
+Enable Email provider (email + password).
+
+To skip verification (single user):
+- Authentication → Providers → Email
+  - Turn OFF "Confirm email"
 
 ## 2) Create table + RLS
 
@@ -48,4 +52,3 @@ The app uses:
 - `SUPABASE_ANON_KEY`: stored in `assets/js/app.js`
 
 These are public keys (safe to ship). Never put `service_role` key in frontend.
-
