@@ -160,7 +160,7 @@ const App = {
         // Update title
         document.getElementById('difficulty-title').textContent = 
             difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
-        
+
         this.renderLevelPage();
     },
 

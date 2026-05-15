@@ -226,6 +226,7 @@ button {
 .resume-container {
     width: 100%;
     max-width: 400px;
+    margin-bottom: 6px;
 }
 
 .resume-btn {
