@@ -28,19 +28,19 @@
         <div class="difficulty-selector">
             <button class="difficulty-btn" data-difficulty="easy">
                 <span class="diff-label">Easy</span>
-                <span class="diff-count">250 Levels</span>
+                <span class="diff-count" data-diff-count="easy">2500 Levels</span>
             </button>
             <button class="difficulty-btn" data-difficulty="medium">
                 <span class="diff-label">Medium</span>
-                <span class="diff-count">250 Levels</span>
+                <span class="diff-count" data-diff-count="medium">2500 Levels</span>
             </button>
             <button class="difficulty-btn" data-difficulty="hard">
                 <span class="diff-label">Hard</span>
-                <span class="diff-count">250 Levels</span>
+                <span class="diff-count" data-diff-count="hard">2500 Levels</span>
             </button>
             <button class="difficulty-btn" data-difficulty="expert">
                 <span class="diff-label">Expert</span>
-                <span class="diff-count">250 Levels</span>
+                <span class="diff-count" data-diff-count="expert">2500 Levels</span>
             </button>
         </div>
         
@@ -60,6 +60,16 @@
                 <span class="back-text">Kembali</span>
             </button>
             <h2 id="difficulty-title" class="difficulty-title"></h2>
+        </div>
+
+        <div class="level-pagination" id="level-pagination" style="display: none;">
+            <button class="page-btn" id="levels-prev" type="button" aria-label="Previous levels page">
+                <span aria-hidden="true">&lt;</span>
+            </button>
+            <span class="page-label" id="levels-page-label"></span>
+            <button class="page-btn" id="levels-next" type="button" aria-label="Next levels page">
+                <span aria-hidden="true">&gt;</span>
+            </button>
         </div>
         
         <div id="level-grid" class="level-grid"></div>

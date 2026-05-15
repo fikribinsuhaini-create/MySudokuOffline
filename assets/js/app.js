@@ -4,6 +4,8 @@ const App = {
     game: null,
     puzzlesData: null,
     currentDifficulty: null,
+    currentLevelPage: 0,
+    levelsPerPage: 100,
 
     // Initialize app
     async init() {
@@ -18,9 +20,25 @@ const App = {
         try {
             const response = await fetch('/assets/data/puzzles.json');
             this.puzzlesData = await response.json();
+            this.updateDifficultyCounts();
         } catch (e) {
             console.error('Failed to load puzzles:', e);
             alert('Failed to load puzzles. Please refresh the page.');
+        }
+    },
+
+    getLevelCount(difficulty) {
+        const list = this.puzzlesData?.[difficulty];
+        return Array.isArray(list) ? list.length : 0;
+    },
+
+    updateDifficultyCounts() {
+        const diffs = ['easy', 'medium', 'hard', 'expert'];
+        for (const d of diffs) {
+            const el = document.querySelector(`[data-diff-count="${d}"]`);
+            if (!el) continue;
+            const count = this.getLevelCount(d);
+            if (count > 0) el.textContent = `${count} Levels`;
         }
     },
 
@@ -46,6 +64,15 @@ const App = {
 
         document.getElementById('back-to-levels')?.addEventListener('click', () => {
             this.saveAndExitGame();
+        });
+
+        // Level pagination
+        document.getElementById('levels-prev')?.addEventListener('click', () => {
+            this.changeLevelPage(-1);
+        });
+
+        document.getElementById('levels-next')?.addEventListener('click', () => {
+            this.changeLevelPage(1);
         });
 
         // Control buttons
@@ -118,30 +145,61 @@ const App = {
     // Show level list for difficulty
     showLevelList(difficulty) {
         this.currentDifficulty = difficulty;
+        this.currentLevelPage = 0;
         this.showScreen('level-list-screen');
         
         // Update title
         document.getElementById('difficulty-title').textContent = 
             difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
         
+        this.renderLevelPage();
+    },
+
+    changeLevelPage(delta) {
+        const total = this.getLevelCount(this.currentDifficulty);
+        const totalPages = Math.max(1, Math.ceil(total / this.levelsPerPage));
+        const next = Math.min(Math.max(this.currentLevelPage + delta, 0), totalPages - 1);
+        if (next === this.currentLevelPage) return;
+        this.currentLevelPage = next;
+        this.renderLevelPage();
+    },
+
+    renderLevelPage() {
+        const difficulty = this.currentDifficulty;
+        const total = this.getLevelCount(difficulty);
+        if (total <= 0) return;
+
+        const startIndex = this.currentLevelPage * this.levelsPerPage; // 0-based
+        const endIndex = Math.min(startIndex + this.levelsPerPage, total);
+
+        // Pagination UI
+        const pagination = document.getElementById('level-pagination');
+        const pageLabel = document.getElementById('levels-page-label');
+        const prevBtn = document.getElementById('levels-prev');
+        const nextBtn = document.getElementById('levels-next');
+        const totalPages = Math.max(1, Math.ceil(total / this.levelsPerPage));
+        if (pagination) pagination.style.display = totalPages > 1 ? 'flex' : 'none';
+        if (pageLabel) pageLabel.textContent = `${startIndex + 1}-${endIndex} / ${total}`;
+        if (prevBtn) prevBtn.disabled = this.currentLevelPage === 0;
+        if (nextBtn) nextBtn.disabled = this.currentLevelPage >= totalPages - 1;
+
         // Generate level buttons
         const levelGrid = document.getElementById('level-grid');
         levelGrid.innerHTML = '';
-        
-        const levelCount = 250; // 250 levels per difficulty
-        for (let i = 1; i <= levelCount; i++) {
+        for (let levelNumber = startIndex + 1; levelNumber <= endIndex; levelNumber++) {
             const btn = document.createElement('button');
             btn.className = 'level-btn';
-            btn.textContent = i;
-            
-            if (Storage.isLevelCompleted(difficulty, i)) {
+            btn.type = 'button';
+            btn.textContent = levelNumber;
+
+            if (Storage.isLevelCompleted(difficulty, levelNumber)) {
                 btn.classList.add('completed');
             }
-            
+
             btn.addEventListener('click', () => {
-                this.loadLevel(difficulty, i);
+                this.loadLevel(difficulty, levelNumber);
             });
-            
+
             levelGrid.appendChild(btn);
         }
     },
@@ -407,7 +465,8 @@ const App = {
     loadNextLevel() {
         this.closeWinModal();
         const nextLevel = this.game.levelNumber + 1;
-        if (nextLevel <= 250) {
+        const maxLevel = this.getLevelCount(this.game.difficulty);
+        if (nextLevel <= maxLevel) {
             this.loadLevel(this.game.difficulty, nextLevel);
         } else {
             this.showScreen('level-select-screen');

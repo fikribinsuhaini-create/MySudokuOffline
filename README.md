@@ -1,10 +1,10 @@
-# 🎯 Sudoku PWA - 1000 Levels
+# 🎯 Sudoku PWA - 10000 Levels
 
-Permainan Sudoku offline-ready dengan 1000 tahap merentasi 4 kesukaran.
+Permainan Sudoku offline-ready dengan 10000 tahap merentasi 4 kesukaran.
 
 ## ✨ Features
 
-- **1000 Tahap**: 250 tahap setiap kesukaran (Easy, Medium, Hard, Expert)
+- **Tahap Banyak**: Default 10000 (2500 setiap kesukaran), boleh generate ikut suka
 - **Offline Support**: PWA boleh main tanpa internet
 - **Auto-Save**: Progress disimpan automatik dalam localStorage
 - **Timer**: Rakam masa setiap permainan
@@ -31,7 +31,7 @@ sudoku-pwa/
 │   │   ├── sudoku.js              # Game logic & validation
 │   │   └── storage.js             # localStorage management
 │   └── data/
-│       ├── puzzles.json           # 1000 puzzles (212KB)
+│       ├── puzzles.json           # 10000 puzzles (~2.1MB)
 │       └── generate-puzzles.js    # Puzzle generator script
 └── README.md
 ```
@@ -76,7 +76,7 @@ Upload semua fail ke mana-mana static hosting:
 - Kalau ada game tertanggal, ada button "Resume"
 
 ### Level Selection
-- Pilih mana-mana tahap dari 1-250
+- Pilih mana-mana tahap dari 1 sampai jumlah yang ada
 - Tahap completed ada tanda ✓
 - Klik tahap untuk mula
 
@@ -113,10 +113,14 @@ Kalau nak generate puzzles sendiri:
 
 ```bash
 cd assets/data
+# Default: 2500 puzzles per difficulty (10000 total)
 node generate-puzzles.js
+
+# Example: 2500 puzzles per difficulty (10000 total)
+node generate-puzzles.js --per-difficulty 2500
 ```
 
-Script akan generate 1000 puzzles baru dengan solutions.
+Script akan generate puzzles baru dengan solutions.
 
 **Settings**:
 - Easy: 40-45 clues (easier)

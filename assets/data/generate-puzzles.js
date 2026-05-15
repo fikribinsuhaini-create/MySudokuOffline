@@ -224,8 +224,24 @@ class SudokuGenerator {
 }
 
 // Generate all puzzles
-function generateAllPuzzles() {
-    console.log('Generating 1000 Sudoku puzzles...');
+function parseArgs(argv) {
+    const args = { perDifficulty: 2500 };
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a === '--per-difficulty' || a === '-n') {
+            const v = Number.parseInt(argv[i + 1], 10);
+            if (!Number.isFinite(v) || v <= 0) throw new Error(`Invalid ${a} value`);
+            args.perDifficulty = v;
+            i++;
+        } else if (a === '--help' || a === '-h') {
+            args.help = true;
+        }
+    }
+    return args;
+}
+
+function generateAllPuzzles(puzzlesPerDifficulty) {
+    console.log(`Generating ${puzzlesPerDifficulty * 4} Sudoku puzzles...`);
     console.log('This may take a few minutes...\n');
 
     const generator = new SudokuGenerator();
@@ -239,7 +255,6 @@ function generateAllPuzzles() {
     };
 
     const difficulties = ['easy', 'medium', 'hard', 'expert'];
-    const puzzlesPerDifficulty = 250;
 
     for (const difficulty of difficulties) {
         console.log(`Generating ${puzzlesPerDifficulty} ${difficulty} puzzles...`);
@@ -276,7 +291,16 @@ function generateAllPuzzles() {
 }
 
 // Main execution
-const puzzles = generateAllPuzzles();
+const { perDifficulty, help } = parseArgs(process.argv.slice(2));
+if (help) {
+    console.log('Usage: node generate-puzzles.js [--per-difficulty N]');
+    console.log('');
+    console.log('Options:');
+    console.log('  --per-difficulty, -n   Puzzles per difficulty (default: 2500)');
+    process.exit(0);
+}
+
+const puzzles = generateAllPuzzles(perDifficulty);
 
 // Save to file
 const outputPath = path.join(__dirname, 'puzzles.json');
