@@ -98,7 +98,7 @@ Upload semua fail ke mana-mana static hosting:
 
 ### Game Stats
 - **Timer**: Rakam masa (MM:SS format)
-- **Mistakes**: Tunjuk kesilapan (max 3)
+- **Mistakes**: Tunjuk jumlah kesilapan (tiada game over)
 - Level number dan kesukaran
 
 ### Win Condition
@@ -174,7 +174,7 @@ Total size: ~284KB (sangat ringan!)
 1. **Easy Levels**: Best untuk belajar strategy
 2. **Notes Mode**: Guna untuk tandakan possible numbers
 3. **Highlights**: Perhatikan highlight untuk cari pattern
-4. **Mistakes**: Hati-hati, hanya 3 mistakes allowed!
+4. **Mistakes**: Tak ada limit game over—main je sampai siap.
 5. **Hints**: Simpan untuk saat critical
 6. **Undo**: Jangan takut try, boleh undo
 

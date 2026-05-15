@@ -4,6 +4,61 @@
 const fs = require('fs');
 const path = require('path');
 
+function normalizeDigits(boardString) {
+    const digitMap = new Map();
+    let nextDigit = 1;
+    let out = '';
+
+    for (const ch of boardString) {
+        if (ch === '.') {
+            out += '.';
+            continue;
+        }
+
+        if (!digitMap.has(ch)) {
+            digitMap.set(ch, String(nextDigit));
+            nextDigit++;
+        }
+        out += digitMap.get(ch);
+    }
+
+    return out;
+}
+
+function applyTransform(boardString, transformFn) {
+    const out = Array(81);
+    for (let row = 0; row < 9; row++) {
+        for (let col = 0; col < 9; col++) {
+            const srcIndex = row * 9 + col;
+            const [newRow, newCol] = transformFn(row, col);
+            const dstIndex = newRow * 9 + newCol;
+            out[dstIndex] = boardString[srcIndex];
+        }
+    }
+    return out.join('');
+}
+
+function canonicalizePuzzle(boardString) {
+    const transforms = [
+        (r, c) => [r, c],           // identity
+        (r, c) => [c, 8 - r],       // rotate 90
+        (r, c) => [8 - r, 8 - c],   // rotate 180
+        (r, c) => [8 - c, r],       // rotate 270
+        (r, c) => [r, 8 - c],       // mirror horizontally
+        (r, c) => [8 - r, c],       // mirror vertically
+        (r, c) => [c, r],           // main diagonal
+        (r, c) => [8 - c, 8 - r]    // anti-diagonal
+    ];
+
+    let best = null;
+    for (const tf of transforms) {
+        const transformed = applyTransform(boardString, tf);
+        const normalized = normalizeDigits(transformed);
+        if (best === null || normalized < best) best = normalized;
+    }
+    return best;
+}
+
 class SudokuGenerator {
     constructor() {
         this.board = Array(9).fill(0).map(() => Array(9).fill(0));
@@ -174,6 +229,8 @@ function generateAllPuzzles() {
     console.log('This may take a few minutes...\n');
 
     const generator = new SudokuGenerator();
+    const seenExactPuzzles = new Set();
+    const seenCanonicalPuzzles = new Set();
     const puzzles = {
         easy: [],
         medium: [],
@@ -187,8 +244,27 @@ function generateAllPuzzles() {
     for (const difficulty of difficulties) {
         console.log(`Generating ${puzzlesPerDifficulty} ${difficulty} puzzles...`);
         for (let i = 0; i < puzzlesPerDifficulty; i++) {
-            puzzles[difficulty].push(generator.generatePuzzleSet(difficulty));
-            
+            const maxAttempts = 2000;
+            let attempts = 0;
+            while (true) {
+                attempts++;
+                const puzzleSet = generator.generatePuzzleSet(difficulty);
+                const canonicalKey = canonicalizePuzzle(puzzleSet.puzzle);
+                if (!seenExactPuzzles.has(puzzleSet.puzzle) && !seenCanonicalPuzzles.has(canonicalKey)) {
+                    seenExactPuzzles.add(puzzleSet.puzzle);
+                    seenCanonicalPuzzles.add(canonicalKey);
+                    puzzles[difficulty].push(puzzleSet);
+                    break;
+                }
+
+                if (attempts >= maxAttempts) {
+                    throw new Error(
+                        `Too many duplicate/similar puzzles while generating ${difficulty} #${i + 1}. ` +
+                        `Try lowering total puzzles or improving generation randomness.`
+                    );
+                }
+            }
+             
             if ((i + 1) % 25 === 0) {
                 console.log(`  ${i + 1}/${puzzlesPerDifficulty} completed`);
             }

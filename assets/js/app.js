@@ -273,12 +273,10 @@ const App = {
             
             this.saveGameState();
             
-            if (this.game.isComplete()) {
-                this.handleWin();
-            } else if (this.game.mistakes >= this.game.maxMistakes) {
-                this.handleGameOver();
-            }
-        }
+             if (this.game.isComplete()) {
+                 this.handleWin();
+             }
+         }
         
         this.updateNumberPad();
     },
@@ -346,7 +344,7 @@ const App = {
         
         // Update mistakes
         document.getElementById('mistakes').textContent = 
-            `❌ ${this.game.mistakes}/${this.game.maxMistakes}`;
+            `❌ ${this.game.mistakes}`;
     },
 
     // Update timer display
@@ -395,16 +393,9 @@ const App = {
         document.getElementById('final-time').textContent = 
             this.game.formatTime(this.game.timer);
         document.getElementById('final-mistakes').textContent = 
-            `${this.game.mistakes}/${this.game.maxMistakes}`;
+            `${this.game.mistakes}`;
         
         document.getElementById('win-modal').classList.add('active');
-    },
-
-    // Handle game over (too many mistakes)
-    handleGameOver() {
-        this.game.stopTimer();
-        alert('Game Over! Too many mistakes. Try again!');
-        this.loadLevel(this.game.difficulty, this.game.levelNumber);
     },
 
     // Close win modal

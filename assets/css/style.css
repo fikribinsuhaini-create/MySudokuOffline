@@ -281,10 +281,23 @@ button {
 
 .level-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    grid-template-columns: repeat(5, minmax(64px, 1fr));
     gap: 12px;
-    max-width: 600px;
+    width: 100%;
+    max-width: 520px;
     margin: 0 auto;
+    justify-content: center;
+}
+
+@media (max-width: 420px) {
+    #level-list-screen {
+        padding: 14px 12px;
+        gap: 16px;
+    }
+
+    .level-grid {
+        gap: 8px;
+    }
 }
 
 .level-btn {
@@ -297,6 +310,7 @@ button {
     font-weight: 600;
     transition: all var(--transition-fast);
     position: relative;
+    width: 100%;
 }
 
 .level-btn:active {
@@ -679,7 +693,8 @@ button {
     }
     
     .level-grid {
-        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        grid-template-columns: repeat(5, minmax(72px, 1fr));
+        max-width: 620px;
     }
     
     .controls {
