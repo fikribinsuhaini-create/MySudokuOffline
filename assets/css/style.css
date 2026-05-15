@@ -52,7 +52,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg-primary);
     color: var(--text-primary);
-    min-height: 100vh;
+    min-height: var(--app-height, 100vh);
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -71,9 +71,20 @@ button {
 /* Screen Management */
 .screen {
     display: none;
-    min-height: 100vh;
+    min-height: var(--app-height, 100vh);
     padding: 20px;
     animation: fadeIn 0.3s ease;
+}
+
+/* Telegram Mini App: respect safe area + reduce weird tap highlight */
+html.in-telegram body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+html.in-telegram .screen {
+    padding-top: calc(20px + env(safe-area-inset-top));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
 }
 
 .screen.active {

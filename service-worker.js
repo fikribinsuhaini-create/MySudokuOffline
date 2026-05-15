@@ -1,12 +1,13 @@
 // service-worker.js - PWA Service Worker for offline functionality
 
-const CACHE_NAME = 'sudoku-pwa-v24';
+const CACHE_NAME = 'sudoku-pwa-v25';
 const urlsToCache = [
     '/',
     '/index.html',
     '/manifest.json',
     '/assets/css/style.css',
     '/assets/js/app.js',
+    '/assets/js/telegram.js',
     '/assets/js/sudoku.js',
     '/assets/js/storage.js',
     '/assets/data/puzzles.json'
