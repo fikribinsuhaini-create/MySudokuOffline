@@ -64,12 +64,14 @@ const App = {
     async refreshSyncUI() {
         const statusEl = document.getElementById('sync-status');
         const lastEl = document.getElementById('sync-last');
+        const errEl = document.getElementById('sync-error');
         const signInBtn = document.getElementById('sync-signin');
         const signUpBtn = document.getElementById('sync-signup');
         const logoutBtn = document.getElementById('sync-logout');
-
         const meta = Storage.loadCloudMeta();
+
         if (lastEl) lastEl.textContent = meta?.lastSyncAt ? new Date(meta.lastSyncAt).toLocaleString() : '-';
+        if (errEl) errEl.textContent = meta?.lastError ? meta.lastError : '-';
 
         if (!this.supabase) {
             if (statusEl) statusEl.textContent = 'No sync';
@@ -90,6 +92,8 @@ const App = {
         // Auto pull once when signed in and never synced this session
         if (user && !meta?.autoPulledAt) {
             await this.pullFromCloud();
+            // If cloud empty, push local up so other devices can pull.
+            await this.pushToCloud();
             Storage.saveCloudMeta({ ...(meta || {}), autoPulledAt: Date.now() });
         }
     },
@@ -145,6 +149,8 @@ const App = {
 
         if (error) {
             console.error('Cloud pull failed:', error);
+            const meta = Storage.loadCloudMeta() || {};
+            Storage.saveCloudMeta({ ...meta, lastError: error.message || String(error) });
             return;
         }
         if (!data) return;
@@ -190,6 +196,8 @@ const App = {
 
         if (error) {
             console.error('Cloud push failed:', error);
+            const meta = Storage.loadCloudMeta() || {};
+            Storage.saveCloudMeta({ ...meta, lastError: error.message || String(error) });
             return;
         }
 
