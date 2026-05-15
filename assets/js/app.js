@@ -75,6 +75,15 @@ const App = {
             this.changeLevelPage(1);
         });
 
+        // Stats screen
+        document.getElementById('stats-btn')?.addEventListener('click', () => {
+            this.showStats();
+        });
+
+        document.getElementById('back-from-stats')?.addEventListener('click', () => {
+            this.showScreen('level-select-screen');
+        });
+
         // Control buttons
         document.getElementById('notes-btn')?.addEventListener('click', () => {
             this.toggleNotesMode();
@@ -153,6 +162,96 @@ const App = {
             difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
         
         this.renderLevelPage();
+    },
+
+    showStats() {
+        this.renderStats();
+        this.showScreen('stats-screen');
+    },
+
+    renderStats() {
+        const grid = document.getElementById('stats-grid');
+        if (!grid) return;
+
+        const completed = Storage.getCompletedLevels();
+        const difficulties = ['easy', 'medium', 'hard', 'expert'];
+
+        const byDifficulty = {};
+        for (const d of difficulties) byDifficulty[d] = [];
+
+        for (const [key, value] of Object.entries(completed)) {
+            const [difficulty, levelStr] = key.split('_');
+            const levelNumber = Number.parseInt(levelStr, 10);
+            if (!byDifficulty[difficulty] || !Number.isFinite(levelNumber)) continue;
+            byDifficulty[difficulty].push({ levelNumber, ...value });
+        }
+
+        const formatTime = (seconds) => this.game ? this.game.formatTime(seconds) : `${seconds}s`;
+
+        grid.innerHTML = '';
+
+        // Overall card
+        const totalLevels = difficulties.reduce((acc, d) => acc + this.getLevelCount(d), 0);
+        const totalCompleted = difficulties.reduce((acc, d) => acc + byDifficulty[d].length, 0);
+        const overallCard = document.createElement('div');
+        overallCard.className = 'stats-card';
+        overallCard.innerHTML = `
+            <div class="stats-card-title">
+                <h3>Overall</h3>
+                <span class="stats-small">${totalCompleted}/${totalLevels}</span>
+            </div>
+            <div class="stats-rows">
+                <div class="stats-row"><span class="label">Completed</span><span class="value">${totalCompleted}</span></div>
+                <div class="stats-row"><span class="label">Remaining</span><span class="value">${Math.max(0, totalLevels - totalCompleted)}</span></div>
+            </div>
+        `;
+        grid.appendChild(overallCard);
+
+        // Per-difficulty cards
+        for (const d of difficulties) {
+            const list = byDifficulty[d];
+            const total = this.getLevelCount(d);
+            const completedCount = list.length;
+
+            let bestTime = null;
+            let bestLevel = null;
+            let totalTime = 0;
+            let totalMistakes = 0;
+            let latestAt = null;
+
+            for (const item of list) {
+                totalTime += item.time || 0;
+                totalMistakes += item.mistakes || 0;
+
+                if (Number.isFinite(item.time) && (bestTime === null || item.time < bestTime)) {
+                    bestTime = item.time;
+                    bestLevel = item.levelNumber;
+                }
+                if (Number.isFinite(item.completedAt) && (latestAt === null || item.completedAt > latestAt)) {
+                    latestAt = item.completedAt;
+                }
+            }
+
+            const avgTime = completedCount > 0 ? Math.round(totalTime / completedCount) : null;
+            const avgMistakes = completedCount > 0 ? (totalMistakes / completedCount) : null;
+            const latestDate = latestAt ? new Date(latestAt).toLocaleDateString() : null;
+
+            const card = document.createElement('div');
+            card.className = 'stats-card';
+            card.innerHTML = `
+                <div class="stats-card-title">
+                    <h3>${d.charAt(0).toUpperCase() + d.slice(1)}</h3>
+                    <span class="stats-small">${completedCount}/${total}</span>
+                </div>
+                <div class="stats-rows">
+                    <div class="stats-row"><span class="label">Best Time</span><span class="value">${bestTime === null ? '-' : `${formatTime(bestTime)} (#${bestLevel})`}</span></div>
+                    <div class="stats-row"><span class="label">Avg Time</span><span class="value">${avgTime === null ? '-' : formatTime(avgTime)}</span></div>
+                    <div class="stats-row"><span class="label">Avg Mistakes</span><span class="value">${avgMistakes === null ? '-' : avgMistakes.toFixed(1)}</span></div>
+                    <div class="stats-row"><span class="label">Last Completed</span><span class="value">${latestDate ?? '-'}</span></div>
+                </div>
+            `;
+            grid.appendChild(card);
+        }
     },
 
     changeLevelPage(delta) {

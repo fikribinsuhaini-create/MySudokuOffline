@@ -127,6 +127,52 @@ button {
     max-width: 400px;
 }
 
+.menu-actions {
+    width: 100%;
+    max-width: 400px;
+}
+
+.menu-btn {
+    width: 100%;
+    background: rgba(21, 25, 53, 0.7);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(45, 52, 84, 0.9);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-normal);
+}
+
+.menu-btn:active {
+    transform: scale(0.98);
+    background: rgba(37, 43, 79, 0.85);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .menu-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+        border-color: rgba(124, 58, 237, 0.35);
+    }
+}
+
+.menu-btn-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+}
+
+.menu-btn-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
 .difficulty-btn {
     background: var(--bg-secondary);
     border: 2px solid var(--border-color);
@@ -375,6 +421,92 @@ button {
     right: 4px;
     font-size: 0.7rem;
     opacity: 0.7;
+}
+
+/* Stats Screen */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        max-width: 860px;
+    }
+}
+
+.stats-card {
+    background: rgba(21, 25, 53, 0.7);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(45, 52, 84, 0.9);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.stats-card-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.stats-card-title h3 {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--text-primary);
+}
+
+.stats-card-title .stats-small {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.stats-rows {
+    display: grid;
+    gap: 8px;
+}
+
+.stats-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.stats-row .label {
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+.stats-row .value {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+}
+
+.stats-footer {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+}
+
+.stats-note {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    max-width: 520px;
 }
 
 /* Game Screen */
