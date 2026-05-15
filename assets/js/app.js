@@ -906,11 +906,21 @@ const App = {
 
 // Start app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
+    // Ensure new service worker activates immediately after deploys.
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then((reg) => {
+            if (reg?.waiting) {
+                reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+        }).catch(() => {});
+    }
+
     window.addEventListener('error', (event) => {
         try { App.showFatalError(event?.error || event?.message || event); } catch (_) {}
     });
     window.addEventListener('unhandledrejection', (event) => {
         try { App.showFatalError(event?.reason || event); } catch (_) {}
     });
+    document.documentElement.dataset.appBoot = '1';
     App.init();
 });

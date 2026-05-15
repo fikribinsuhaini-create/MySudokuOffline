@@ -58,6 +58,23 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* Debug safety: if app JS fails to boot, show a small hint (invisible when booted) */
+html:not([data-app-boot]) body::before {
+    content: "App JS not loaded (cache/service worker?). Hard refresh / clear site data.";
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    z-index: 2000;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.16);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fecaca;
+    font-weight: 800;
+    backdrop-filter: blur(10px);
+}
+
 button {
     font-family: inherit;
     border: none;
