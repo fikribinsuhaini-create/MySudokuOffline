@@ -1,0 +1,26 @@
+{
+  "name": "Sudoku - 1000 Levels",
+  "short_name": "Sudoku",
+  "description": "Play Sudoku offline with 1000 levels across 4 difficulties",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e27",
+  "theme_color": "#0a0e27",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%230a0e27' width='192' height='192'/%3E%3Ctext x='96' y='130' font-size='120' text-anchor='middle' fill='%237c3aed' font-weight='800' font-family='system-ui'%3E9%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect fill='%230a0e27' width='512' height='512'/%3E%3Ctext x='256' y='360' font-size='340' text-anchor='middle' fill='%237c3aed' font-weight='800' font-family='system-ui'%3E9%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "screenshots": []
+}

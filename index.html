@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Play Sudoku offline - 1000 levels with multiple difficulties">
+    <meta name="theme-color" content="#0a0e27">
+    <title>Sudoku - 1000 Levels</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sudoku">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+    <!-- Level Selection Screen -->
+    <div id="level-select-screen" class="screen active">
+        <div class="header">
+            <h1 class="logo">SUDOKU</h1>
+            <p class="subtitle">1000 Levels • Offline Ready</p>
+        </div>
+        
+        <div class="difficulty-selector">
+            <button class="difficulty-btn" data-difficulty="easy">
+                <span class="diff-label">Easy</span>
+                <span class="diff-count">250 Levels</span>
+            </button>
+            <button class="difficulty-btn" data-difficulty="medium">
+                <span class="diff-label">Medium</span>
+                <span class="diff-count">250 Levels</span>
+            </button>
+            <button class="difficulty-btn" data-difficulty="hard">
+                <span class="diff-label">Hard</span>
+                <span class="diff-count">250 Levels</span>
+            </button>
+            <button class="difficulty-btn" data-difficulty="expert">
+                <span class="diff-label">Expert</span>
+                <span class="diff-count">250 Levels</span>
+            </button>
+        </div>
+        
+        <div id="resume-container" class="resume-container" style="display: none;">
+            <button id="resume-btn" class="resume-btn">
+                <span>Resume Level <span id="resume-level"></span></span>
+                <span class="resume-time"></span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Level List Screen -->
+    <div id="level-list-screen" class="screen">
+        <div class="header-bar">
+            <button class="back-btn" id="back-to-menu" type="button" aria-label="Kembali ke menu">
+                <span class="back-icon" aria-hidden="true">&lt;</span>
+                <span class="back-text">Kembali</span>
+            </button>
+            <h2 id="difficulty-title" class="difficulty-title"></h2>
+        </div>
+        
+        <div id="level-grid" class="level-grid"></div>
+    </div>
+    
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <div class="game-header">
+            <button class="back-btn" id="back-to-levels" type="button" aria-label="Kembali ke tahap">
+                <span class="back-icon" aria-hidden="true">&lt;</span>
+                <span class="back-text">Tahap</span>
+            </button>
+            <div class="game-info">
+                <span id="level-number" class="level-number"></span>
+                <span id="timer" class="timer">00:00</span>
+            </div>
+            <div class="game-stats">
+                <span id="mistakes" class="mistakes">❌ 0/3</span>
+            </div>
+        </div>
+        
+        <div class="board-container">
+            <div id="sudoku-board" class="sudoku-board"></div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-buttons">
+                <button id="notes-btn" class="control-btn">
+                    <span class="btn-icon">✏️</span>
+                    <span class="btn-label">Notes</span>
+                </button>
+                <button id="hint-btn" class="control-btn">
+                    <span class="btn-icon">💡</span>
+                    <span class="btn-label">Hint</span>
+                </button>
+                <button id="undo-btn" class="control-btn">
+                    <span class="btn-icon">↶</span>
+                    <span class="btn-label">Undo</span>
+                </button>
+                <button id="erase-btn" class="control-btn">
+                    <span class="btn-icon">⌫</span>
+                    <span class="btn-label">Erase</span>
+                </button>
+            </div>
+            
+            <div class="number-pad">
+                <button class="number-btn" data-number="1">1</button>
+                <button class="number-btn" data-number="2">2</button>
+                <button class="number-btn" data-number="3">3</button>
+                <button class="number-btn" data-number="4">4</button>
+                <button class="number-btn" data-number="5">5</button>
+                <button class="number-btn" data-number="6">6</button>
+                <button class="number-btn" data-number="7">7</button>
+                <button class="number-btn" data-number="8">8</button>
+                <button class="number-btn" data-number="9">9</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Win Modal -->
+    <div id="win-modal" class="modal">
+        <div class="modal-content win-content">
+            <div class="win-icon">🎉</div>
+            <h2>Puzzle Complete!</h2>
+            <div class="win-stats">
+                <div class="stat">
+                    <span class="stat-label">Time</span>
+                    <span id="final-time" class="stat-value"></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Mistakes</span>
+                    <span id="final-mistakes" class="stat-value"></span>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="next-level-btn" class="primary-btn">Next Level</button>
+                <button id="back-to-menu-btn" class="secondary-btn">Menu</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="/assets/js/storage.js"></script>
+    <script src="/assets/js/sudoku.js"></script>
+    <script src="/assets/js/app.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('SW registered:', reg))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
